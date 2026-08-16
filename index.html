@@ -336,6 +336,8 @@
     cursor:pointer; transition:transform .2s;
   }
   .form-group input[type="file"]::file-selector-button:hover{ transform:translateY(-2px); }
+  .video-preview{ margin-bottom:16px; border-radius:6px; overflow:hidden; border:1px solid var(--card-line); background:#000; }
+  .video-preview video{ width:100%; max-height:260px; display:block; }
   .lock-screen{ padding:60px 30px; text-align:center; }
   .lock-screen .icon{ margin-bottom:18px; display:flex; justify-content:center; color:var(--volt); }
   .lock-screen input{ text-align:center; letter-spacing:8px; font-size:22px; max-width:220px; margin:0 auto 16px; }
@@ -504,10 +506,13 @@
             <input type="text" id="itThumb" placeholder="https://..." required>
           </div>
           <div class="form-group">
-            <label data-i18n="f_media">Video URL</label>
-            <input type="text" id="itMedia" placeholder="https://... (mp4 or youtube embed link)" required>
+            <label data-i18n="f_media">Choose Video From Your Files</label>
+            <input type="file" id="itMediaFile" accept="video/*">
           </div>
-          <div class="form-note" data-i18n="f_media_note">Paste a direct .mp4 link or a YouTube/Instagram embed URL.</div>
+          <div class="video-preview hide" id="videoPreviewWrap">
+            <video id="videoPreview" controls></video>
+          </div>
+          <div class="form-note" id="itMediaNote" data-i18n="f_media_note">Pick a video file from your device. Keep clips short — large files may be too big to save.</div>
           <input type="hidden" id="itEditId">
           <button type="submit" class="form-submit" id="itSubmitBtn" data-i18n="f_save">Save Video</button>
         </form>
@@ -597,8 +602,11 @@ const dict = {
   f_title_en:{en:"Title (English)",ar:"العنوان (إنجليزي)"}, f_title_ar:{en:"Title (Arabic)",ar:"العنوان (عربي)"},
   f_desc_en:{en:"Description (English)",ar:"الوصف (إنجليزي)"}, f_desc_ar:{en:"Description (Arabic)",ar:"الوصف (عربي)"},
   f_thumb:{en:"Thumbnail Image URL",ar:"رابط الصورة المصغرة"},
-  f_media:{en:"Video URL",ar:"رابط الفيديو"},
-  f_media_note:{en:"Paste a direct .mp4 link or a YouTube/Instagram embed URL.",ar:"ضع رابط مباشر mp4 أو رابط يوتيوب/إنستغرام."},
+  f_media:{en:"Choose Video From Your Files",ar:"اختر فيديو من ملفاتك"},
+  f_media_note:{en:"Pick a video file from your device. Keep clips short — large files may be too big to save.",ar:"اختر ملف فيديو من جهازك. اجعل المقاطع قصيرة — الملفات الكبيرة قد لا تُحفظ."},
+  media_too_big:{en:"This video is too large to save ({size}MB). Please use a shorter clip or compress it, under {max}MB.",ar:"هذا الفيديو كبير جداً ({size} م.ب). استخدم مقطعاً أقصر أو ضغطه ليكون أقل من {max} م.ب."},
+  media_required:{en:"Please choose a video file.",ar:"يرجى اختيار ملف فيديو."},
+  current_video_set:{en:"A video is already saved for this item. Choose a new file only if you want to replace it.",ar:"يوجد فيديو محفوظ مسبقاً لهذا العنصر. اختر ملفاً جديداً فقط إذا أردت استبداله."},
   f_save:{en:"Save Video",ar:"حفظ الفيديو"},
   f_setting_photo:{en:"Choose Photo From Your Files",ar:"اختر صورة من ملفاتك"},
   f_photo_note:{en:"Pick an image from your device. It updates the photo shown in the About section right away.",ar:"اختر صورة من جهازك. سيتم تحديث الصورة في قسم نبذة عني فوراً."},
@@ -613,6 +621,7 @@ const dict = {
   no_items:{en:"No videos uploaded yet. Check back soon.",ar:"لا توجد فيديوهات بعد. تحقق قريباً."},
   toast_saved:{en:"Video saved!",ar:"تم حفظ الفيديو!"},
   toast_deleted:{en:"Video deleted.",ar:"تم حذف الفيديو."},
+  confirm_delete:{en:'Delete "{title}"? This cannot be undone.',ar:'حذف "{title}"؟ لا يمكن التراجع عن هذا الإجراء.'},
   toast_settings:{en:"Settings updated!",ar:"تم تحديث الإعدادات!"},
   wrong_pass:{en:"Wrong password. Try again.",ar:"كلمة سر خاطئة. حاول مجدداً."}
 };
@@ -693,12 +702,7 @@ function openLightbox(id){
   if(!it) return;
   activeItemId = id;
   const media = document.getElementById('lbMedia');
-  media.innerHTML = '';
-  if(/\.mp4($|\?)/i.test(it.media)){
-    media.innerHTML = `<video src="${escapeAttr(it.media)}" controls autoplay style="width:100%;height:100%;background:#000;object-fit:contain"></video>`;
-  } else {
-    media.innerHTML = `<iframe src="${escapeAttr(it.media)}" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
-  }
+  media.innerHTML = `<video src="${escapeAttr(it.media)}" controls autoplay style="width:100%;height:100%;background:#000;object-fit:contain"></video>`;
   document.getElementById('lbTag').textContent = dict.video_tag[lang];
   document.getElementById('lbTitle').textContent = lang==='ar' ? it.titleAr : it.titleEn;
   document.getElementById('lbDesc').textContent = lang==='ar' ? it.descAr : it.descEn;
@@ -787,7 +791,16 @@ function tryUnlock(){
 function openAdminDashboard(){
   renderManageList();
   loadPhotoTab();
+  resetItemForm();
   openOverlay('adminOverlay');
+}
+function resetItemForm(){
+  document.getElementById('itemForm').reset();
+  document.getElementById('itEditId').value='';
+  document.getElementById('itSubmitBtn').textContent = dict.f_save[lang];
+  pendingVideoData = null;
+  document.getElementById('videoPreviewWrap').classList.add('hide');
+  document.getElementById('itMediaNote').textContent = dict.f_media_note[lang];
 }
 document.querySelectorAll('.admin-tab').forEach(tab=>{
   tab.addEventListener('click', ()=>{
@@ -799,9 +812,37 @@ document.querySelectorAll('.admin-tab').forEach(tab=>{
 });
 
 // add / edit video
+let pendingVideoData = null;
+const MAX_VIDEO_BYTES = 2 * 1024 * 1024;
+document.getElementById('itMediaFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > MAX_VIDEO_BYTES){
+    const msg = dict.media_too_big[lang]
+      .replace('{size}', (file.size/1024/1024).toFixed(1))
+      .replace('{max}', (MAX_VIDEO_BYTES/1024/1024).toFixed(0));
+    showToast(msg);
+    e.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    pendingVideoData = reader.result;
+    document.getElementById('videoPreview').src = pendingVideoData;
+    document.getElementById('videoPreviewWrap').classList.remove('hide');
+  };
+  reader.readAsDataURL(file);
+});
+
 document.getElementById('itemForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const editId = document.getElementById('itEditId').value;
+  const existing = editId ? items.find(x=>x.id===editId) : null;
+  const mediaData = pendingVideoData || (existing ? existing.media : null);
+  if(!mediaData){
+    showToast(dict.media_required[lang]);
+    return;
+  }
   const data = {
     id: editId || 'it_'+Date.now(),
     titleEn: document.getElementById('itTitleEn').value,
@@ -809,7 +850,7 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
     descEn: document.getElementById('itDescEn').value,
     descAr: document.getElementById('itDescAr').value,
     thumb: document.getElementById('itThumb').value,
-    media: document.getElementById('itMedia').value
+    media: mediaData
   };
   if(editId){
     const idx = items.findIndex(x=>x.id===editId);
@@ -818,9 +859,7 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
     items.push(data);
   }
   await setData('djabri-items', items);
-  document.getElementById('itemForm').reset();
-  document.getElementById('itEditId').value='';
-  document.getElementById('itSubmitBtn').textContent = dict.f_save[lang];
+  resetItemForm();
   showToast(dict.toast_saved[lang]);
   renderGallery(); renderManageList();
 });
@@ -853,12 +892,20 @@ function loadItemForEdit(id){
   document.getElementById('itDescEn').value = it.descEn;
   document.getElementById('itDescAr').value = it.descAr;
   document.getElementById('itThumb').value = it.thumb;
-  document.getElementById('itMedia').value = it.media;
+  document.getElementById('itMediaFile').value = '';
+  pendingVideoData = null;
+  document.getElementById('videoPreview').src = it.media;
+  document.getElementById('videoPreviewWrap').classList.remove('hide');
+  document.getElementById('itMediaNote').textContent = dict.current_video_set[lang];
   document.getElementById('itEditId').value = it.id;
   document.getElementById('itSubmitBtn').textContent = dict.f_save[lang];
   document.querySelector('.admin-tab[data-tab="add"]').click();
 }
 async function deleteItem(id){
+  const it = items.find(x=>x.id===id);
+  const title = it ? (lang==='ar' ? it.titleAr : it.titleEn) : '';
+  const msg = dict.confirm_delete[lang].replace('{title}', title);
+  if(!window.confirm(msg)) return;
   items = items.filter(x=>x.id!==id);
   await setData('djabri-items', items);
   showToast(dict.toast_deleted[lang]);
