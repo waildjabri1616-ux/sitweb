@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DJABRI — Wail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#050810;
+    --bg-soft:#0a0f1c;
+    --card:#0c1220;
+    --card-line:#1c2740;
+    --fg:#f2f5fb;
+    --muted:#7c88a3;
+    --volt:#2f6dff;
+    --volt2:#00d4ff;
+    --red:#ff3b30;
+    --radius:4px;
+    --disp-en:'Anton', 'Bebas Neue', sans-serif;
+    --body-en:'Inter', sans-serif;
+    --disp-ar:'Tajawal', sans-serif;
+    --body-ar:'Tajawal', sans-serif;
+    --disp: var(--disp-en);
+    --body: var(--body-en);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family:var(--body);
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  body[dir="rtl"]{ --disp: var(--disp-ar); --body: var(--body-ar); }
+  body[dir="rtl"] .eyebrow, body[dir="rtl"] .num-tag{ letter-spacing:0; }
+  img{max-width:100%;display:block;}
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+  ::selection{background:var(--volt);color:#0a0a0a;}
+
+  /* scroll reveal */
+  .reveal{ opacity:0; transform:translateY(28px); transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+  .reveal-stag > *{ opacity:0; transform:translateY(24px); transition:opacity .6s ease, transform .6s ease; }
+  .reveal-stag.in > *{ opacity:1; transform:translateY(0); }
+  .reveal-stag.in > *:nth-child(1){transition-delay:.03s;}
+  .reveal-stag.in > *:nth-child(2){transition-delay:.09s;}
+  .reveal-stag.in > *:nth-child(3){transition-delay:.15s;}
+  .reveal-stag.in > *:nth-child(4){transition-delay:.21s;}
+  .reveal-stag.in > *:nth-child(5){transition-delay:.27s;}
+  .reveal-stag.in > *:nth-child(6){transition-delay:.33s;}
+  .reveal-stag.in > *:nth-child(n+7){transition-delay:.38s;}
+
+  /* nav */
+  header{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px 5vw;
+    background:linear-gradient(to bottom, rgba(5,8,16,.9), transparent);
+    transition:background .3s;
+  }
+  header.scrolled{ background:rgba(5,8,16,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--card-line); }
+  .logo{
+    font-family:var(--disp-en); font-size:22px; letter-spacing:2px; display:flex; align-items:center; gap:8px;
+  }
+  .logo .num{ background:linear-gradient(100deg, var(--volt2), var(--volt)); -webkit-background-clip:text; background-clip:text; color:transparent; background-size:200% auto; animation:shine 4s linear infinite; }
+  @keyframes shine{ to{ background-position:200% center; } }
+  nav.links{ display:flex; gap:36px; }
+  nav.links a{ font-size:13px; letter-spacing:1.5px; text-transform:uppercase; font-weight:600; opacity:.85; transition:opacity .2s,color .2s; position:relative; }
+  nav.links a:hover{ opacity:1; color:var(--volt); }
+  .nav-right{ display:flex; align-items:center; gap:14px; }
+  .lang-btn{
+    width:42px; height:42px; border-radius:50%; border:1.5px solid var(--card-line);
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:800; letter-spacing:.5px;
+    transition:border-color .2s, transform .2s, background .2s, box-shadow .2s;
+    background:var(--bg-soft);
+  }
+  .lang-btn:hover{ border-color:var(--volt); color:var(--volt); transform:rotate(180deg); box-shadow:0 0 16px rgba(0,212,255,.35); }
+  .burger{ display:none; width:42px;height:42px;border-radius:50%;border:1.5px solid var(--card-line);align-items:center;justify-content:center;background:var(--bg-soft); }
+  .burger span{width:16px;height:2px;background:var(--fg);position:relative;}
+  .burger span::before,.burger span::after{content:'';position:absolute;left:0;width:16px;height:2px;background:var(--fg);}
+  .burger span::before{top:-5px;} .burger span::after{top:5px;}
+
+  /* hero */
+  .hero{
+    min-height:100svh; position:relative; display:flex; flex-direction:column; justify-content:center;
+    padding:120px 5vw 60px;
+    background:
+      radial-gradient(circle at 88% 10%, rgba(0,212,255,.16), transparent 40%),
+      radial-gradient(circle at 8% 85%, rgba(47,109,255,.14), transparent 45%),
+      radial-gradient(circle at 50% 50%, rgba(47,109,255,.06), transparent 60%),
+      var(--bg);
+    overflow:hidden;
+  }
+  .hero::before{
+    content:''; position:absolute; width:520px; height:520px; border-radius:50%;
+    background:radial-gradient(circle, rgba(0,212,255,.22), transparent 70%);
+    top:-180px; right:-160px; z-index:0; animation:drift 9s ease-in-out infinite;
+  }
+  @keyframes drift{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-30px,40px) scale(1.08); } }
+  .hero::after{
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(124,136,163,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,136,163,.06) 1px, transparent 1px);
+    background-size:56px 56px;
+    mask-image:radial-gradient(circle at 75% 20%, black, transparent 65%);
+  }
+  .hero > *{ position:relative; z-index:1; }
+  .hero-tag{
+    display:inline-flex; align-items:center; gap:10px; align-self:flex-start;
+    border:1px solid var(--card-line); padding:7px 14px; border-radius:99px;
+    font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:28px;
+    opacity:0; animation:fadeUp .7s ease .1s forwards;
+  }
+  .hero-tag .dot{width:7px;height:7px;border-radius:50%;background:var(--volt);box-shadow:0 0 10px var(--volt);animation:pulseDot 1.8s ease-in-out infinite;}
+  @keyframes pulseDot{0%,100%{box-shadow:0 0 6px var(--volt);}50%{box-shadow:0 0 18px 3px var(--volt2);}}
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);} }
+  .hero h1{
+    font-family:var(--disp); font-weight:400; text-transform:uppercase;
+    font-size:clamp(52px, 12vw, 168px); line-height:.86; letter-spacing:-1px;
+  }
+  .hero h1 span{ display:block; opacity:0; transform:translateY(40px); animation:fadeUp .8s cubic-bezier(.2,.7,.2,1) forwards; }
+  .hero h1 span:nth-child(1){ animation-delay:.15s; }
+  .hero h1 span:nth-child(2){ animation-delay:.28s; }
+  .hero h1 span:nth-child(3){ animation-delay:.41s; }
+  .hero h1 .outline{
+    -webkit-text-stroke:2px var(--fg); color:transparent;
+  }
+  .hero h1 .accent{
+    background:linear-gradient(100deg, var(--volt2) 0%, var(--volt) 55%, #6a9bff 100%);
+    background-size:200% auto;
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 0 26px rgba(0,212,255,.35));
+    animation:fadeUp .8s cubic-bezier(.2,.7,.2,1) forwards, shine 5s linear infinite 1s;
+  }
+  .hero-sub{
+    display:flex; justify-content:space-between; align-items:flex-end; gap:40px; margin-top:36px; flex-wrap:wrap;
+    opacity:0; animation:fadeUp .8s ease .55s forwards;
+  }
+  .hero-desc{ max-width:440px; color:var(--muted); font-size:16px; line-height:1.7; }
+  .hero-desc b{color:var(--fg);}
+  .hero-cta{ display:flex; gap:14px; }
+  .btn{
+    padding:16px 30px; border-radius:99px; font-size:13px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
+    display:inline-flex; align-items:center; gap:10px; transition:transform .25s, box-shadow .25s, background .25s, color .25s;
+  }
+  .btn-primary{ background:linear-gradient(100deg, var(--volt2), var(--volt)); color:#fff; box-shadow:0 4px 20px rgba(47,109,255,.35); }
+  .btn-primary:hover{ transform:translateY(-3px); box-shadow:0 12px 34px rgba(0,212,255,.4); }
+  .btn-outline{ border:1.5px solid var(--card-line); }
+  .btn-outline:hover{ border-color:var(--fg); transform:translateY(-3px); }
+
+  .num-tag{
+    position:absolute; top:120px; right:5vw; font-family:var(--disp-en); font-size:220px; color:transparent;
+    -webkit-text-stroke:1px rgba(47,109,255,.14); line-height:1; z-index:0; user-select:none;
+    pointer-events:none; animation:floatTag 6s ease-in-out infinite;
+  }
+  @keyframes floatTag{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-18px);} }
+  body[dir="rtl"] .num-tag{ right:auto; left:5vw; }
+
+  .scroll-hint{
+    position:absolute; bottom:34px; left:50%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--muted); font-size:11px;
+    letter-spacing:2px; text-transform:uppercase;
+  }
+  .scroll-hint .line{width:1px;height:34px;background:linear-gradient(var(--muted),transparent);animation:scrolldown 1.8s infinite;}
+  @keyframes scrolldown{0%{opacity:0;transform:scaleY(0);transform-origin:top;}30%{opacity:1;transform:scaleY(1);transform-origin:top;}70%{opacity:1;transform:scaleY(1);transform-origin:bottom;}100%{opacity:0;transform:scaleY(0);transform-origin:bottom;}}
+
+  section{ padding:130px 5vw; position:relative; }
+  .eyebrow{
+    font-size:12px; letter-spacing:3px; text-transform:uppercase; color:var(--volt); font-weight:700; margin-bottom:14px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{content:'';width:26px;height:1.5px;background:var(--volt);}
+  .sec-title{
+    font-family:var(--disp); font-weight:400; text-transform:uppercase; font-size:clamp(34px,5.5vw,64px);
+    line-height:1; margin-bottom:20px;
+  }
+
+  /* about */
+  .about{ background:var(--bg-soft); border-top:1px solid var(--card-line); border-bottom:1px solid var(--card-line); }
+  .about-grid{ display:grid; grid-template-columns:.85fr 1.15fr; gap:70px; align-items:center; }
+  .about-frame{
+    position:relative; aspect-ratio:4/5; border-radius:var(--radius); overflow:hidden; border:1px solid var(--card-line);
+    background:linear-gradient(160deg,#111827,#050810); transition:transform .5s ease;
+  }
+  .about-frame:hover{ transform:translateY(-6px); }
+  .about-frame img{ width:100%; height:100%; object-fit:cover; transition:transform .6s ease; }
+  .about-frame:hover img{ transform:scale(1.04); }
+  .about-frame .badge{
+    position:absolute; bottom:18px; left:18px; background:linear-gradient(100deg, var(--volt2), var(--volt)); color:#fff; font-family:var(--disp-en);
+    font-size:15px; padding:10px 16px; border-radius:4px; letter-spacing:1px; box-shadow:0 6px 22px rgba(0,212,255,.35);
+  }
+  body[dir="rtl"] .about-frame .badge{ left:auto; right:18px; }
+  .about-text p{ color:var(--muted); font-size:16px; line-height:1.85; margin-bottom:18px; max-width:560px; }
+  .about-stats{ display:flex; gap:0; margin-top:38px; flex-wrap:wrap; }
+  .stat{ padding-inline-end:36px; margin-inline-end:36px; border-inline-end:1px solid var(--card-line); }
+  .stat:last-child{border:none;}
+  .stat .n{ font-family:var(--disp); font-size:40px; line-height:1; background:linear-gradient(100deg, var(--volt2), var(--volt)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .stat .l{ font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-top:8px; }
+
+  /* work grid */
+  .work-head{ margin-bottom:50px; }
+  .grid{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:22px;
+  }
+  .card{
+    position:relative; background:var(--card); border:1px solid var(--card-line); border-radius:var(--radius);
+    overflow:hidden; cursor:pointer; transition:transform .35s, border-color .35s, box-shadow .35s;
+  }
+  .card:hover{ transform:translateY(-6px); border-color:#2a3a5c; box-shadow:0 16px 40px rgba(0,20,60,.4); }
+  .card-media{ aspect-ratio:4/5; position:relative; overflow:hidden; background:#0a0f1c; }
+  .card-media img{ width:100%; height:100%; object-fit:cover; transition:transform .5s; }
+  .card:hover .card-media img{ transform:scale(1.07); }
+  .card-tag{
+    position:absolute; top:14px; left:14px; background:rgba(5,8,16,.75); backdrop-filter:blur(6px);
+    padding:6px 12px; border-radius:99px; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-weight:700;
+    border:1px solid rgba(255,255,255,.12); color:var(--volt2);
+  }
+  body[dir="rtl"] .card-tag{ left:auto; right:14px; }
+  .play-icon{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .3s;
+    background:rgba(5,8,16,.25);
+  }
+  .card:hover .play-icon{ opacity:1; }
+  .play-icon .circle{
+    width:56px;height:56px;border-radius:50%;background:linear-gradient(100deg, var(--volt2), var(--volt)); display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 26px rgba(0,212,255,.45); transform:scale(.7); transition:transform .3s;
+  }
+  .card:hover .play-icon .circle{ transform:scale(1); }
+  .card-info{ padding:18px; }
+  .card-info h3{ font-family:var(--disp); font-weight:400; font-size:20px; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+  .card-info p{ font-size:13px; color:var(--muted); line-height:1.5; }
+  .empty-state{ padding:70px 20px; text-align:center; color:var(--muted); border:1px dashed var(--card-line); border-radius:var(--radius); grid-column:1/-1; }
+
+  /* contact */
+  .contact{ background:var(--bg-soft); border-top:1px solid var(--card-line); }
+  .contact-wrap{ display:grid; grid-template-columns:1fr 1fr; gap:60px; }
+  .contact-big{ font-family:var(--disp); font-size:clamp(30px,4.5vw,52px); text-transform:uppercase; line-height:1.05; margin-bottom:26px; }
+  .contact-big .accent{
+    background:linear-gradient(100deg, var(--volt2), var(--volt));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 0 18px rgba(0,212,255,.3));
+  }
+  .contact-list a{ display:flex; align-items:center; justify-content:space-between; padding:20px 0; border-bottom:1px solid var(--card-line); font-size:16px; transition:.25s; }
+  .contact-list a:hover{ color:var(--volt2); padding-inline-start:8px; }
+  .contact-list span.label{ font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+  .socials{ display:flex; gap:12px; margin-top:30px; flex-wrap:wrap; }
+  .social-chip{ border:1px solid var(--card-line); padding:10px 18px; border-radius:99px; font-size:12px; letter-spacing:1px; text-transform:uppercase; font-weight:700; transition:.25s; }
+  .social-chip:hover{ background:linear-gradient(100deg, var(--volt2), var(--volt)); color:#fff; border-color:transparent; transform:translateY(-3px); }
+
+  footer{ padding:30px 5vw; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--card-line); font-size:12px; color:var(--muted); }
+  .admin-gear{ width:34px;height:34px;border-radius:50%; border:1px solid var(--card-line); display:flex;align-items:center;justify-content:center; opacity:.5; transition:.3s; }
+  .admin-gear:hover{ opacity:1; border-color:var(--volt); color:var(--volt); transform:rotate(90deg); box-shadow:0 0 14px rgba(0,212,255,.3); }
+
+  /* modals */
+  .overlay{
+    position:fixed; inset:0; background:rgba(2,4,10,.88); backdrop-filter:blur(6px); z-index:1000;
+    display:none; align-items:center; justify-content:center; padding:24px;
+  }
+  .overlay.open{ display:flex; animation:overlayIn .25s ease; }
+  @keyframes overlayIn{ from{opacity:0;} to{opacity:1;} }
+  .modal{
+    background:var(--bg-soft); border:1px solid var(--card-line); border-radius:8px; width:100%; max-width:520px;
+    max-height:88vh; overflow-y:auto; position:relative; animation:modalIn .3s cubic-bezier(.2,.7,.2,1);
+  }
+  @keyframes modalIn{ from{opacity:0; transform:translateY(18px) scale(.98);} to{opacity:1; transform:translateY(0) scale(1);} }
+  .modal.wide{ max-width:900px; }
+  .modal-close{
+    position:absolute; top:16px; right:16px; width:36px;height:36px;border-radius:50%; background:rgba(255,255,255,.06);
+    display:flex;align-items:center;justify-content:center; z-index:5; transition:.2s;
+  }
+  body[dir="rtl"] .modal-close{ right:auto; left:16px; }
+  .modal-close:hover{ background:var(--red); transform:rotate(90deg); }
+
+  .lb-media{ width:100%; aspect-ratio:16/9; background:#000; }
+  .lb-media img,.lb-media video,.lb-media iframe{ width:100%; height:100%; object-fit:contain; border:0; }
+  .lb-body{ padding:26px; }
+  .lb-body h2{ font-family:var(--disp); font-weight:400; text-transform:uppercase; font-size:28px; margin-bottom:10px; }
+  .lb-body p{ color:var(--muted); line-height:1.7; margin-bottom:6px; }
+
+  .form-group{ margin-bottom:16px; }
+  .form-group label{ display:block; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .form-group input, .form-group textarea, .form-group select{
+    width:100%; background:#0a0f1c; border:1px solid var(--card-line); border-radius:4px; padding:12px 14px;
+    color:var(--fg); font-family:var(--body); font-size:14px; outline:none; transition:border-color .2s, box-shadow .2s;
+  }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus{ border-color:var(--volt); box-shadow:0 0 0 3px rgba(47,109,255,.15); }
+  .form-group textarea{ min-height:90px; resize:vertical; }
+  .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .form-note{ font-size:12px; color:var(--muted); margin-top:-6px; margin-bottom:16px; }
+  .form-submit{ width:100%; padding:15px; border-radius:99px; background:linear-gradient(100deg, var(--volt2), var(--volt)); color:#fff; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; font-size:13px; transition:.25s; box-shadow:0 4px 20px rgba(47,109,255,.3); }
+  .form-submit:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(0,212,255,.4); }
+  .toast{
+    position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:linear-gradient(100deg, var(--volt2), var(--volt)); color:#fff;
+    padding:14px 26px; border-radius:99px; font-weight:700; font-size:13px; z-index:2000; opacity:0; transition:.3s; letter-spacing:.5px;
+    box-shadow:0 10px 30px rgba(0,212,255,.35);
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* admin panel */
+  .admin-modal{ max-width:960px; width:100%; }
+  .admin-tabs{ display:flex; gap:6px; padding:20px 26px 0; flex-wrap:wrap; }
+  .admin-tab{ padding:10px 18px; border-radius:99px; font-size:12px; letter-spacing:1px; text-transform:uppercase; font-weight:700; color:var(--muted); border:1px solid var(--card-line); transition:.2s; }
+  .admin-tab.active{ background:linear-gradient(100deg, var(--volt2), var(--volt)); color:#fff; border-color:transparent; }
+  .admin-body{ padding:26px; }
+  .admin-pane{ display:none; }
+  .admin-pane.active{ display:block; animation:fadeUp .35s ease; }
+  .admin-list-item{
+    display:flex; align-items:center; gap:14px; padding:14px; border:1px solid var(--card-line); border-radius:6px; margin-bottom:10px; transition:.2s;
+  }
+  .admin-list-item:hover{ border-color:#2a3a5c; }
+  .admin-list-item img{ width:60px;height:60px; object-fit:cover; border-radius:4px; flex-shrink:0; }
+  .admin-list-item .info{ flex:1; min-width:0; }
+  .admin-list-item .info h4{ font-size:14px; margin-bottom:4px; }
+  .admin-list-item .info span{ font-size:12px; color:var(--muted); }
+  .admin-actions{ display:flex; gap:8px; }
+  .icon-btn{ width:34px;height:34px; border-radius:50%; border:1px solid var(--card-line); display:flex;align-items:center;justify-content:center; transition:.2s; }
+  .icon-btn:hover{ border-color:var(--volt); color:var(--volt); transform:translateY(-2px); }
+  .icon-btn.danger:hover{ border-color:var(--red); color:var(--red); }
+  .photo-preview{
+    width:180px; height:180px; border-radius:10px; overflow:hidden; margin:0 auto 26px; border:1px solid var(--card-line);
+    background:linear-gradient(160deg,#111827,#050810);
+  }
+  .photo-preview img{ width:100%; height:100%; object-fit:cover; }
+  .form-group input[type="file"]{
+    padding:10px; font-size:13px; color:var(--muted);
+  }
+  .form-group input[type="file"]::file-selector-button{
+    background:linear-gradient(100deg, var(--volt2), var(--volt)); color:#fff; border:none; padding:9px 16px;
+    border-radius:99px; font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-inline-end:14px;
+    cursor:pointer; transition:transform .2s;
+  }
+  .form-group input[type="file"]::file-selector-button:hover{ transform:translateY(-2px); }
+  .lock-screen{ padding:60px 30px; text-align:center; }
+  .lock-screen .icon{ margin-bottom:18px; display:flex; justify-content:center; color:var(--volt); }
+  .lock-screen input{ text-align:center; letter-spacing:8px; font-size:22px; max-width:220px; margin:0 auto 16px; }
+  .mini-note{ font-size:11px; color:var(--muted); margin-top:14px; }
+
+  .hide{ display:none !important; }
+
+  @media(max-width:900px){
+    nav.links{ display:none; }
+    .burger{ display:flex; }
+    .about-grid, .contact-wrap{ grid-template-columns:1fr; }
+    .grid{ grid-template-columns:repeat(2,1fr); }
+    .num-tag{ display:none; }
+    .form-row{ grid-template-columns:1fr; }
+  }
+  @media(max-width:560px){
+    .grid{ grid-template-columns:1fr; }
+    section{ padding:90px 6vw; }
+  }
+</style>
+</head>
+<body dir="ltr">
+
+<div class="num-tag">20</div>
+
+<header id="header">
+  <div class="logo"><span>DJABRI</span><span class="num">.20</span></div>
+  <nav class="links">
+    <a href="#home" data-i18n="nav_home">Home</a>
+    <a href="#about" data-i18n="nav_about">About</a>
+    <a href="#work" data-i18n="nav_work">Work</a>
+    <a href="#contact" data-i18n="nav_contact">Contact</a>
+  </nav>
+  <div class="nav-right">
+    <button class="lang-btn" id="langBtn">AR</button>
+    <button class="burger" id="burgerBtn"><span></span></button>
+  </div>
+</header>
+
+<section class="hero" id="home">
+  <div class="hero-tag"><span class="dot"></span><span data-i18n="hero_tag">Creative Editor · Est. 2024</span></div>
+  <h1>
+    <span data-i18n="hero_line1">WAIL</span>
+    <span class="outline" data-i18n="hero_line2">DJABRI</span>
+    <span class="accent" data-i18n="hero_line3">EDITS.</span>
+  </h1>
+  <div class="hero-sub">
+    <p class="hero-desc" data-i18n="hero_desc">Video editor & visual storyteller crafting bold, high-impact content. 20 years old, sharpening the craft one frame at a time.</p>
+    <div class="hero-cta">
+      <a href="#work" class="btn btn-primary" data-i18n="hero_btn1">Watch Videos</a>
+      <a href="#contact" class="btn btn-outline" data-i18n="hero_btn2">Get In Touch</a>
+    </div>
+  </div>
+  <div class="scroll-hint"><span data-i18n="scroll">Scroll</span><span class="line"></span></div>
+</section>
+
+<section class="about" id="about">
+  <div class="about-grid">
+    <div class="about-frame reveal">
+      <img id="aboutImg" src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=800&auto=format&fit=crop" alt="Wail Djabri">
+      <div class="badge">20 <span data-i18n="yo">Y/O</span></div>
+    </div>
+    <div class="about-text reveal">
+      <div class="eyebrow" data-i18n="about_eyebrow">About</div>
+      <h2 class="sec-title"><span data-i18n="about_title1">MEET</span> <span style="color:var(--volt2)" data-i18n="about_title2">DJABRI</span></h2>
+      <p data-i18n="about_p1">I'm Wail Djabri — a 20 year old video editor and content creator. I turn raw footage into stories that move people, blending sharp cuts, motion and sound into work that stands out.</p>
+      <p data-i18n="about_p2">Every video on this page is a piece of that craft: montages and edits built with the same obsession for detail — from the first frame to the last export.</p>
+      <div class="about-stats">
+        <div class="stat"><div class="n">20</div><div class="l" data-i18n="stat1">Years Old</div></div>
+        <div class="stat"><div class="n" id="statVideos">0</div><div class="l" data-i18n="stat2">Video Projects</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="work" id="work">
+  <div class="work-head reveal">
+    <div class="eyebrow" data-i18n="work_eyebrow">Portfolio</div>
+    <h2 class="sec-title"><span data-i18n="work_title1">THE</span> <span style="color:var(--volt2)" data-i18n="work_title2">WORK</span></h2>
+  </div>
+  <div class="grid reveal-stag" id="galleryGrid"></div>
+</section>
+
+<section class="contact" id="contact">
+  <div class="contact-wrap">
+    <div class="reveal">
+      <div class="eyebrow" data-i18n="contact_eyebrow">Contact</div>
+      <h2 class="contact-big"><span data-i18n="contact_title1">LET'S CREATE</span> <span class="accent" data-i18n="contact_title2">TOGETHER</span></h2>
+      <p style="color:var(--muted);max-width:420px;line-height:1.8" data-i18n="contact_p">Have a project in mind? Reach out through any channel below.</p>
+      <div class="socials" id="socialsWrap"></div>
+    </div>
+    <div class="contact-list reveal" id="contactList"></div>
+  </div>
+</section>
+
+<footer>
+  <div data-i18n="footer_text">© 2025 Djabri. All rights reserved.</div>
+  <button class="admin-gear" id="adminGear" title="Admin">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+</footer>
+
+<!-- VIDEO LIGHTBOX -->
+<div class="overlay" id="itemOverlay">
+  <div class="modal wide">
+    <button class="modal-close" data-close="itemOverlay"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="lb-media" id="lbMedia"></div>
+    <div class="lb-body">
+      <span class="card-tag" id="lbTag" style="position:static;display:inline-block;margin-bottom:14px;"></span>
+      <h2 id="lbTitle"></h2>
+      <p id="lbDesc"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN LOCK -->
+<div class="overlay" id="adminLockOverlay">
+  <div class="modal">
+    <button class="modal-close" data-close="adminLockOverlay"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="lock-screen">
+      <div class="icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+      <h2 style="font-family:var(--disp);text-transform:uppercase;margin-bottom:18px" data-i18n="admin_title">Admin Access</h2>
+      <input type="password" id="adminPass" placeholder="••••" maxlength="8">
+      <button class="btn btn-primary" id="adminUnlockBtn" data-i18n="admin_enter">Enter</button>
+      <div class="mini-note" id="adminErr"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN DASHBOARD -->
+<div class="overlay" id="adminOverlay">
+  <div class="modal admin-modal">
+    <button class="modal-close" data-close="adminOverlay"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="add" data-i18n="tab_add">Add Video</button>
+      <button class="admin-tab" data-tab="manage" data-i18n="tab_manage">Manage</button>
+      <button class="admin-tab" data-tab="photo" data-i18n="tab_photo">Profile Photo</button>
+      <button class="admin-tab" data-tab="settings" data-i18n="tab_settings">Site Settings</button>
+    </div>
+    <div class="admin-body">
+
+      <div class="admin-pane active" id="pane-add">
+        <form id="itemForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label data-i18n="f_title_en">Title (English)</label>
+              <input type="text" id="itTitleEn" required>
+            </div>
+            <div class="form-group">
+              <label data-i18n="f_title_ar">Title (Arabic)</label>
+              <input type="text" id="itTitleAr" dir="rtl" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label data-i18n="f_desc_en">Description (English)</label>
+              <textarea id="itDescEn"></textarea>
+            </div>
+            <div class="form-group">
+              <label data-i18n="f_desc_ar">Description (Arabic)</label>
+              <textarea id="itDescAr" dir="rtl"></textarea>
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="f_thumb">Thumbnail Image URL</label>
+            <input type="text" id="itThumb" placeholder="https://..." required>
+          </div>
+          <div class="form-group">
+            <label data-i18n="f_media">Video URL</label>
+            <input type="text" id="itMedia" placeholder="https://... (mp4 or youtube embed link)" required>
+          </div>
+          <div class="form-note" data-i18n="f_media_note">Paste a direct .mp4 link or a YouTube/Instagram embed URL.</div>
+          <input type="hidden" id="itEditId">
+          <button type="submit" class="form-submit" id="itSubmitBtn" data-i18n="f_save">Save Video</button>
+        </form>
+      </div>
+
+      <div class="admin-pane" id="pane-manage">
+        <div id="manageList"></div>
+      </div>
+
+      <div class="admin-pane" id="pane-photo">
+        <div class="photo-preview" id="photoPreview">
+          <img id="photoPreviewImg" src="" alt="">
+        </div>
+        <form id="photoForm">
+          <div class="form-group">
+            <label data-i18n="f_setting_photo">Choose Photo From Your Files</label>
+            <input type="file" id="setPhotoFile" accept="image/*">
+          </div>
+          <div class="form-note" data-i18n="f_photo_note">Pick an image from your device. It updates the photo shown in the About section right away.</div>
+          <button type="submit" class="form-submit" id="photoSubmitBtn" data-i18n="f_save_photo">Save Photo</button>
+        </form>
+      </div>
+
+      <div class="admin-pane" id="pane-settings">
+        <form id="settingsForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label data-i18n="f_setting_phone">Phone Number</label>
+              <input type="text" id="setPhone">
+            </div>
+            <div class="form-group">
+              <label data-i18n="f_setting_wa">WhatsApp Number</label>
+              <input type="text" id="setWhatsapp">
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="f_setting_email">Email</label>
+            <input type="email" id="setEmail">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label data-i18n="f_setting_ig">Instagram (username or link)</label>
+              <input type="text" id="setInstagram">
+            </div>
+            <div class="form-group">
+              <label data-i18n="f_setting_tt">TikTok (username or link)</label>
+              <input type="text" id="setTiktok">
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="f_setting_sc">Snapchat (username or link)</label>
+            <input type="text" id="setSnapchat">
+          </div>
+          <button type="submit" class="form-submit" data-i18n="f_save_settings">Save Settings</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// translations
+const dict = {
+  nav_home:{en:"Home",ar:"الرئيسية"}, nav_about:{en:"About",ar:"نبذة"}, nav_work:{en:"Work",ar:"الأعمال"}, nav_contact:{en:"Contact",ar:"تواصل"},
+  hero_tag:{en:"Creative Editor · Est. 2024",ar:"مونتير مبدع · منذ 2024"},
+  hero_line1:{en:"WAIL",ar:"وائل"}, hero_line2:{en:"DJABRI",ar:"جابري"}, hero_line3:{en:"EDITS.",ar:"مونتاج."},
+  hero_desc:{en:"Video editor & visual storyteller crafting bold, high-impact content. 20 years old, sharpening the craft one frame at a time.",ar:"مونتير فيديو وصانع محتوى بصري، أصنع أعمالاً قوية ومؤثرة. عمري 20 سنة وأطور حرفتي مع كل مشروع."},
+  hero_btn1:{en:"Watch Videos",ar:"شاهد الفيديوهات"}, hero_btn2:{en:"Get In Touch",ar:"تواصل معي"},
+  scroll:{en:"Scroll",ar:"مرر للأسفل"},
+  yo:{en:"Y/O",ar:"سنة"},
+  about_eyebrow:{en:"About",ar:"نبذة عني"},
+  about_title1:{en:"MEET",ar:"تعرف"}, about_title2:{en:"DJABRI",ar:"على جابري"},
+  about_p1:{en:"I'm Wail Djabri — a 20 year old video editor and content creator. I turn raw footage into stories that move people, blending sharp cuts, motion and sound into work that stands out.",ar:"أنا وائل جابري، مونتير فيديو وصانع محتوى عمري 20 سنة. أحول اللقطات الخام إلى قصص مؤثرة، عبر مزج القص الدقيق والحركة والصوت في أعمال تترك بصمة."},
+  about_p2:{en:"Every video on this page is a piece of that craft: montages and edits built with the same obsession for detail — from the first frame to the last export.",ar:"كل فيديو في هذه الصفحة هو جزء من هذه الحرفة: مونتاجات بُنيت بنفس الشغف بالتفاصيل، من أول لقطة إلى آخر تصدير."},
+  stat1:{en:"Years Old",ar:"سنة عمر"}, stat2:{en:"Video Projects",ar:"مشروع فيديو"},
+  work_eyebrow:{en:"Portfolio",ar:"معرض الأعمال"},
+  work_title1:{en:"THE",ar:"مجموعة"}, work_title2:{en:"WORK",ar:"الأعمال"},
+  contact_eyebrow:{en:"Contact",ar:"تواصل"},
+  contact_title1:{en:"LET'S CREATE",ar:"لنصنع شيئاً"}, contact_title2:{en:"TOGETHER",ar:"معاً"},
+  contact_p:{en:"Have a project in mind? Reach out through any channel below.",ar:"عندك مشروع في بالك؟ تواصل معي عبر أي وسيلة بالأسفل."},
+  footer_text:{en:"© 2025 Djabri. All rights reserved.",ar:"© 2025 جابري. جميع الحقوق محفوظة."},
+  admin_title:{en:"Admin Access",ar:"دخول الإدارة"}, admin_enter:{en:"Enter",ar:"دخول"},
+  tab_add:{en:"Add Video",ar:"إضافة فيديو"}, tab_manage:{en:"Manage",ar:"إدارة"}, tab_photo:{en:"Profile Photo",ar:"الصورة الشخصية"}, tab_settings:{en:"Site Settings",ar:"إعدادات الموقع"},
+  f_title_en:{en:"Title (English)",ar:"العنوان (إنجليزي)"}, f_title_ar:{en:"Title (Arabic)",ar:"العنوان (عربي)"},
+  f_desc_en:{en:"Description (English)",ar:"الوصف (إنجليزي)"}, f_desc_ar:{en:"Description (Arabic)",ar:"الوصف (عربي)"},
+  f_thumb:{en:"Thumbnail Image URL",ar:"رابط الصورة المصغرة"},
+  f_media:{en:"Video URL",ar:"رابط الفيديو"},
+  f_media_note:{en:"Paste a direct .mp4 link or a YouTube/Instagram embed URL.",ar:"ضع رابط مباشر mp4 أو رابط يوتيوب/إنستغرام."},
+  f_save:{en:"Save Video",ar:"حفظ الفيديو"},
+  f_setting_photo:{en:"Choose Photo From Your Files",ar:"اختر صورة من ملفاتك"},
+  f_photo_note:{en:"Pick an image from your device. It updates the photo shown in the About section right away.",ar:"اختر صورة من جهازك. سيتم تحديث الصورة في قسم نبذة عني فوراً."},
+  f_save_photo:{en:"Save Photo",ar:"حفظ الصورة"},
+  toast_photo:{en:"Profile photo updated!",ar:"تم تحديث الصورة الشخصية!"},
+  f_setting_phone:{en:"Phone Number",ar:"رقم الهاتف"}, f_setting_wa:{en:"WhatsApp Number",ar:"رقم الواتساب"},
+  f_setting_email:{en:"Email",ar:"البريد الإلكتروني"}, f_setting_ig:{en:"Instagram (username or link)",ar:"إنستغرام (اسم أو رابط)"},
+  f_setting_tt:{en:"TikTok (username or link)",ar:"تيك توك (اسم أو رابط)"}, f_setting_sc:{en:"Snapchat (username or link)",ar:"سناب شات (اسم أو رابط)"},
+  f_save_settings:{en:"Save Settings",ar:"حفظ الإعدادات"},
+  lbl_phone:{en:"Call",ar:"اتصال"}, lbl_wa:{en:"WhatsApp",ar:"واتساب"}, lbl_email:{en:"Email",ar:"البريد الإلكتروني"},
+  video_tag:{en:"Video",ar:"فيديو"},
+  no_items:{en:"No videos uploaded yet. Check back soon.",ar:"لا توجد فيديوهات بعد. تحقق قريباً."},
+  toast_saved:{en:"Video saved!",ar:"تم حفظ الفيديو!"},
+  toast_deleted:{en:"Video deleted.",ar:"تم حذف الفيديو."},
+  toast_settings:{en:"Settings updated!",ar:"تم تحديث الإعدادات!"},
+  wrong_pass:{en:"Wrong password. Try again.",ar:"كلمة سر خاطئة. حاول مجدداً."}
+};
+let lang = 'en';
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k = el.getAttribute('data-i18n');
+    if(dict[k]) el.textContent = dict[k][lang];
+  });
+  document.body.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.getElementById('langBtn').textContent = lang === 'ar' ? 'EN' : 'AR';
+  renderGallery(); renderContact();
+}
+document.getElementById('langBtn').addEventListener('click', ()=>{ lang = lang === 'en' ? 'ar' : 'en'; applyI18n(); });
+
+// storage
+const SHARED = true;
+async function getData(key, fallback){
+  try{ const r = await window.storage.get(key, SHARED); return r ? JSON.parse(r.value) : fallback; }
+  catch(e){ return fallback; }
+}
+async function setData(key, value){
+  try{ await window.storage.set(key, JSON.stringify(value), SHARED); }catch(e){ console.error(e); }
+}
+
+let items = [];
+let settings = { photo:'', phone:'+213 000 000 000', whatsapp:'+213 000 000 000', email:'wail.djabri@example.com', instagram:'@djabri', tiktok:'@djabri', snapchat:'djabri' };
+
+// init
+async function init(){
+  items = await getData('djabri-items', []);
+  const s = await getData('djabri-settings', null);
+  if(s) settings = s;
+  applyAboutPhoto();
+  applyI18n();
+  fillSettingsForm();
+  initReveal();
+}
+init();
+
+function applyAboutPhoto(){
+  if(settings.photo){ document.getElementById('aboutImg').src = settings.photo; }
+}
+
+// gallery
+function renderGallery(){
+  const grid = document.getElementById('galleryGrid');
+  grid.innerHTML = '';
+  document.getElementById('statVideos').textContent = items.length;
+  if(items.length===0){
+    grid.innerHTML = `<div class="empty-state">${dict.no_items[lang]}</div>`;
+    return;
+  }
+  items.slice().reverse().forEach(it=>{
+    const title = lang==='ar' ? it.titleAr : it.titleEn;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-media">
+        <img src="${escapeAttr(it.thumb)}" alt="">
+        <span class="card-tag">${dict.video_tag[lang]}</span>
+        <div class="play-icon"><div class="circle"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div></div>
+      </div>
+      <div class="card-info"><h3>${escapeHtml(title)}</h3></div>
+    `;
+    card.addEventListener('click', ()=>openLightbox(it.id));
+    grid.appendChild(card);
+  });
+  requestAnimationFrame(refreshReveal);
+}
+
+function escapeHtml(str){ const d=document.createElement('div'); d.textContent = str||''; return d.innerHTML; }
+function escapeAttr(str){ return (str||'').replace(/"/g,'&quot;'); }
+
+let activeItemId = null;
+function openLightbox(id){
+  const it = items.find(x=>x.id===id);
+  if(!it) return;
+  activeItemId = id;
+  const media = document.getElementById('lbMedia');
+  media.innerHTML = '';
+  if(/\.mp4($|\?)/i.test(it.media)){
+    media.innerHTML = `<video src="${escapeAttr(it.media)}" controls autoplay style="width:100%;height:100%;background:#000;object-fit:contain"></video>`;
+  } else {
+    media.innerHTML = `<iframe src="${escapeAttr(it.media)}" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+  }
+  document.getElementById('lbTag').textContent = dict.video_tag[lang];
+  document.getElementById('lbTitle').textContent = lang==='ar' ? it.titleAr : it.titleEn;
+  document.getElementById('lbDesc').textContent = lang==='ar' ? it.descAr : it.descEn;
+  openOverlay('itemOverlay');
+}
+
+// contact section
+function renderContact(){
+  const list = document.getElementById('contactList');
+  list.innerHTML = `
+    <a href="tel:${escapeAttr(settings.phone)}"><span><span class="label">${dict.lbl_phone[lang]}</span><br>${escapeHtml(settings.phone)}</span><span>→</span></a>
+    <a href="https://wa.me/${escapeAttr((settings.whatsapp||'').replace(/[^0-9]/g,''))}" target="_blank"><span><span class="label">${dict.lbl_wa[lang]}</span><br>${escapeHtml(settings.whatsapp)}</span><span>→</span></a>
+    <a href="mailto:${escapeAttr(settings.email)}"><span><span class="label">${dict.lbl_email[lang]}</span><br>${escapeHtml(settings.email)}</span><span>→</span></a>
+  `;
+  const soc = document.getElementById('socialsWrap');
+  soc.innerHTML = '';
+  const chips = [
+    {label:'Instagram', v:settings.instagram},
+    {label:'TikTok', v:settings.tiktok},
+    {label:'Snapchat', v:settings.snapchat}
+  ];
+  chips.forEach(c=>{
+    if(!c.v) return;
+    const link = c.v.startsWith('http') ? c.v : '#';
+    const a = document.createElement('a');
+    a.className='social-chip'; a.textContent = c.label + ' · ' + c.v.replace(/^https?:\/\//,'');
+    a.href = link; if(link!=='#') a.target='_blank';
+    soc.appendChild(a);
+  });
+}
+
+// overlays
+function openOverlay(id){ document.getElementById(id).classList.add('open'); }
+function closeOverlay(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('[data-close]').forEach(btn=>{
+  btn.addEventListener('click', ()=>closeOverlay(btn.dataset.close));
+});
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click', (e)=>{ if(e.target===ov) closeOverlay(ov.id); });
+});
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+// header scroll state
+window.addEventListener('scroll', ()=>{
+  document.getElementById('header').classList.toggle('scrolled', window.scrollY > 30);
+});
+
+// scroll reveal animations
+let revealObserver;
+function initReveal(){
+  revealObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){ entry.target.classList.add('in'); revealObserver.unobserve(entry.target); }
+    });
+  }, { threshold:0.15 });
+  document.querySelectorAll('.reveal, .reveal-stag').forEach(el=>revealObserver.observe(el));
+}
+function refreshReveal(){
+  if(!revealObserver) return;
+  document.querySelectorAll('.reveal-stag:not(.in)').forEach(el=>revealObserver.observe(el));
+}
+
+// admin
+let isAdmin = false;
+document.getElementById('adminGear').addEventListener('click', ()=>{
+  if(isAdmin){ openAdminDashboard(); }
+  else { document.getElementById('adminPass').value=''; document.getElementById('adminErr').textContent=''; openOverlay('adminLockOverlay'); }
+});
+document.getElementById('adminUnlockBtn').addEventListener('click', tryUnlock);
+document.getElementById('adminPass').addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryUnlock(); });
+function tryUnlock(){
+  const val = document.getElementById('adminPass').value;
+  if(val === '1234'){
+    isAdmin = true;
+    closeOverlay('adminLockOverlay');
+    openAdminDashboard();
+  } else {
+    document.getElementById('adminErr').textContent = dict.wrong_pass[lang];
+  }
+}
+function openAdminDashboard(){
+  renderManageList();
+  loadPhotoTab();
+  openOverlay('adminOverlay');
+}
+document.querySelectorAll('.admin-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.admin-pane').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('pane-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+// add / edit video
+document.getElementById('itemForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const editId = document.getElementById('itEditId').value;
+  const data = {
+    id: editId || 'it_'+Date.now(),
+    titleEn: document.getElementById('itTitleEn').value,
+    titleAr: document.getElementById('itTitleAr').value,
+    descEn: document.getElementById('itDescEn').value,
+    descAr: document.getElementById('itDescAr').value,
+    thumb: document.getElementById('itThumb').value,
+    media: document.getElementById('itMedia').value
+  };
+  if(editId){
+    const idx = items.findIndex(x=>x.id===editId);
+    if(idx>-1) items[idx] = data;
+  } else {
+    items.push(data);
+  }
+  await setData('djabri-items', items);
+  document.getElementById('itemForm').reset();
+  document.getElementById('itEditId').value='';
+  document.getElementById('itSubmitBtn').textContent = dict.f_save[lang];
+  showToast(dict.toast_saved[lang]);
+  renderGallery(); renderManageList();
+});
+
+function renderManageList(){
+  const el = document.getElementById('manageList');
+  el.innerHTML = '';
+  if(items.length===0){ el.innerHTML = `<div class="empty-state">${dict.no_items[lang]}</div>`; return; }
+  items.slice().reverse().forEach(it=>{
+    const row = document.createElement('div');
+    row.className='admin-list-item';
+    row.innerHTML = `
+      <img src="${escapeAttr(it.thumb)}">
+      <div class="info"><h4>${escapeHtml(it.titleEn)} / ${escapeHtml(it.titleAr)}</h4><span>${dict.video_tag[lang]}</span></div>
+      <div class="admin-actions">
+        <button class="icon-btn edit-btn" title="Edit"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+        <button class="icon-btn danger del-btn" title="Delete"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      </div>
+    `;
+    row.querySelector('.edit-btn').addEventListener('click', ()=>loadItemForEdit(it.id));
+    row.querySelector('.del-btn').addEventListener('click', ()=>deleteItem(it.id));
+    el.appendChild(row);
+  });
+}
+function loadItemForEdit(id){
+  const it = items.find(x=>x.id===id);
+  if(!it) return;
+  document.getElementById('itTitleEn').value = it.titleEn;
+  document.getElementById('itTitleAr').value = it.titleAr;
+  document.getElementById('itDescEn').value = it.descEn;
+  document.getElementById('itDescAr').value = it.descAr;
+  document.getElementById('itThumb').value = it.thumb;
+  document.getElementById('itMedia').value = it.media;
+  document.getElementById('itEditId').value = it.id;
+  document.getElementById('itSubmitBtn').textContent = dict.f_save[lang];
+  document.querySelector('.admin-tab[data-tab="add"]').click();
+}
+async function deleteItem(id){
+  items = items.filter(x=>x.id!==id);
+  await setData('djabri-items', items);
+  showToast(dict.toast_deleted[lang]);
+  renderGallery(); renderManageList();
+}
+
+// profile photo
+let pendingPhotoData = null;
+function loadPhotoTab(){
+  pendingPhotoData = null;
+  document.getElementById('setPhotoFile').value = '';
+  document.getElementById('photoPreviewImg').src = settings.photo || document.getElementById('aboutImg').src;
+}
+function resizeImage(file, maxSize, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w > h && w > maxSize){ h = Math.round(h * (maxSize / w)); w = maxSize; }
+        else if(h > maxSize){ w = Math.round(w * (maxSize / h)); h = maxSize; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+document.getElementById('setPhotoFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  pendingPhotoData = await resizeImage(file, 900, 0.85);
+  document.getElementById('photoPreviewImg').src = pendingPhotoData;
+});
+document.getElementById('photoForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(pendingPhotoData){ settings.photo = pendingPhotoData; }
+  await setData('djabri-settings', settings);
+  applyAboutPhoto();
+  showToast(dict.toast_photo[lang]);
+});
+
+// settings
+function fillSettingsForm(){
+  document.getElementById('setPhone').value = settings.phone||'';
+  document.getElementById('setWhatsapp').value = settings.whatsapp||'';
+  document.getElementById('setEmail').value = settings.email||'';
+  document.getElementById('setInstagram').value = settings.instagram||'';
+  document.getElementById('setTiktok').value = settings.tiktok||'';
+  document.getElementById('setSnapchat').value = settings.snapchat||'';
+}
+document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  settings = {
+    photo: settings.photo,
+    phone: document.getElementById('setPhone').value,
+    whatsapp: document.getElementById('setWhatsapp').value,
+    email: document.getElementById('setEmail').value,
+    instagram: document.getElementById('setInstagram').value,
+    tiktok: document.getElementById('setTiktok').value,
+    snapchat: document.getElementById('setSnapchat').value
+  };
+  await setData('djabri-settings', settings);
+  applyAboutPhoto();
+  showToast(dict.toast_settings[lang]);
+  renderContact();
+});
+
+// mobile nav toggle
+document.getElementById('burgerBtn').addEventListener('click', ()=>{
+  const nav = document.querySelector('nav.links');
+  nav.style.display = nav.style.display === 'flex' ? 'none' : 'flex';
+  nav.style.cssText += 'position:fixed;top:80px;left:5vw;right:5vw;flex-direction:column;background:#0a0f1c;padding:20px;border-radius:8px;border:1px solid #1c2740;gap:18px;z-index:99;';
+});
+</script>
+</body>
+</html>
