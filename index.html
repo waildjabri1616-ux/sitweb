@@ -365,6 +365,9 @@
     section{ padding:90px 6vw; }
   }
 </style>
+  <!-- Firebase: added only for persistent data storage -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 </head>
 <body dir="ltr">
 
@@ -676,6 +679,44 @@ async function getData(key, fallback){
 }
 async function setData(key, value){
   try{ await window.storage.set(key, JSON.stringify(value), SHARED); }catch(e){ console.error(e); }
+}
+
+// Firebase Realtime Database added without changing the original site code
+const firebaseConfig = {
+  apiKey: "AIzaSyBWZ4nJ19eob-agPN7UV-xXZo02ocxzLb0",
+  authDomain: "djabri-portfolio.firebaseapp.com",
+  databaseURL: "https://djabri-portfolio-default-rtdb.firebaseio.com",
+  projectId: "djabri-portfolio",
+  storageBucket: "djabri-portfolio.firebasestorage.app",
+  messagingSenderId: "155057295014",
+  appId: "1:155057295014:web:63c263945013434efeae67",
+  measurementId: "G-3H579EWXQG"
+};
+
+try {
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  window.djabriFirebaseDB = firebase.database();
+} catch (e) {
+  console.error("Firebase initialization failed:", e);
+}
+
+// Override only the two storage functions used by the original code.
+async function getData(key, fallback){
+  try{
+    const snapshot = await window.djabriFirebaseDB.ref(key).get();
+    return snapshot.exists() ? snapshot.val() : fallback;
+  }catch(e){
+    console.error("Firebase read failed:", e);
+    return fallback;
+  }
+}
+
+async function setData(key, value){
+  try{
+    await window.djabriFirebaseDB.ref(key).set(value);
+  }catch(e){
+    console.error("Firebase write failed:", e);
+  }
 }
 
 // ==========================================
