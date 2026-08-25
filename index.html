@@ -295,12 +295,19 @@
   .form-note{ font-size:12px; color:var(--muted); margin-top:-6px; margin-bottom:16px; }
   .form-submit{ width:100%; padding:15px; border-radius:99px; background:linear-gradient(100deg, var(--volt2), var(--volt)); color:#fff; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; font-size:13px; transition:.25s; box-shadow:0 4px 20px rgba(47,109,255,.3); }
   .form-submit:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(0,212,255,.4); }
+  .form-submit:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
   .toast{
     position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:linear-gradient(100deg, var(--volt2), var(--volt)); color:#fff;
     padding:14px 26px; border-radius:99px; font-weight:700; font-size:13px; z-index:2000; opacity:0; transition:.3s; letter-spacing:.5px;
     box-shadow:0 10px 30px rgba(0,212,255,.35);
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* upload progress bar */
+  .upload-progress{ margin-bottom:16px; }
+  .upload-progress .bar-track{ width:100%; height:6px; background:#0a0f1c; border:1px solid var(--card-line); border-radius:99px; overflow:hidden; }
+  .upload-progress .bar-fill{ height:100%; width:0%; background:linear-gradient(100deg, var(--volt2), var(--volt)); transition:width .15s ease; }
+  .upload-progress .bar-label{ font-size:12px; color:var(--muted); margin-top:6px; }
 
   /* admin panel */
   .admin-modal{ max-width:960px; width:100%; }
@@ -512,6 +519,10 @@
           <div class="video-preview hide" id="videoPreviewWrap">
             <video id="videoPreview" controls></video>
           </div>
+          <div class="upload-progress hide" id="uploadProgressWrap">
+            <div class="bar-track"><div class="bar-fill" id="uploadBarFill"></div></div>
+            <div class="bar-label" id="uploadBarLabel">0%</div>
+          </div>
           <div class="form-note" id="itMediaNote" data-i18n="f_media_note">Pick a video file from your device. Keep clips short — large files may be too big to save.</div>
           <input type="hidden" id="itEditId">
           <button type="submit" class="form-submit" id="itSubmitBtn" data-i18n="f_save">Save Video</button>
@@ -608,6 +619,8 @@ const dict = {
   media_required:{en:"Please choose a video file.",ar:"يرجى اختيار ملف فيديو."},
   current_video_set:{en:"A video is already saved for this item. Choose a new file only if you want to replace it.",ar:"يوجد فيديو محفوظ مسبقاً لهذا العنصر. اختر ملفاً جديداً فقط إذا أردت استبداله."},
   f_save:{en:"Save Video",ar:"حفظ الفيديو"},
+  uploading_video:{en:"Uploading video… {pct}%",ar:"جاري رفع الفيديو… {pct}%"},
+  upload_failed:{en:"Video upload failed. Please try again.",ar:"فشل رفع الفيديو. حاول مجدداً."},
   f_setting_photo:{en:"Choose Photo From Your Files",ar:"اختر صورة من ملفاتك"},
   f_photo_note:{en:"Pick an image from your device. It updates the photo shown in the About section right away.",ar:"اختر صورة من جهازك. سيتم تحديث الصورة في قسم نبذة عني فوراً."},
   f_save_photo:{en:"Save Photo",ar:"حفظ الصورة"},
@@ -645,6 +658,33 @@ async function getData(key, fallback){
 }
 async function setData(key, value){
   try{ await window.storage.set(key, JSON.stringify(value), SHARED); }catch(e){ console.error(e); }
+}
+
+// ==========================================
+// Cloudinary config — replace with your own
+// ==========================================
+const CLOUDINARY_CLOUD_NAME = "zn9tdpxy";
+const CLOUDINARY_UPLOAD_PRESET = "wail_uploads";
+
+function uploadVideoToCloudinary(file, onProgress){
+  return new Promise((resolve, reject)=>{
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`, true);
+    xhr.upload.onprogress = (e)=>{
+      if(e.lengthComputable && onProgress){ onProgress(Math.round((e.loaded/e.total)*100)); }
+    };
+    xhr.onload = ()=>{
+      if(xhr.status>=200 && xhr.status<300){
+        try{ const data = JSON.parse(xhr.responseText); resolve(data.secure_url); }
+        catch(err){ reject(err); }
+      } else { reject(new Error('Upload failed: ' + xhr.status)); }
+    };
+    xhr.onerror = ()=> reject(new Error('Network error during upload'));
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    xhr.send(formData);
+  });
 }
 
 let items = [];
@@ -798,8 +838,10 @@ function resetItemForm(){
   document.getElementById('itemForm').reset();
   document.getElementById('itEditId').value='';
   document.getElementById('itSubmitBtn').textContent = dict.f_save[lang];
-  pendingVideoData = null;
+  document.getElementById('itSubmitBtn').disabled = false;
+  pendingVideoFile = null;
   document.getElementById('videoPreviewWrap').classList.add('hide');
+  document.getElementById('uploadProgressWrap').classList.add('hide');
   document.getElementById('itMediaNote').textContent = dict.f_media_note[lang];
 }
 document.querySelectorAll('.admin-tab').forEach(tab=>{
@@ -812,8 +854,8 @@ document.querySelectorAll('.admin-tab').forEach(tab=>{
 });
 
 // add / edit video
-let pendingVideoData = null;
-const MAX_VIDEO_BYTES = 2 * 1024 * 1024;
+let pendingVideoFile = null;
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB — Cloudinary free plan limit for unsigned uploads
 document.getElementById('itMediaFile').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
@@ -825,24 +867,48 @@ document.getElementById('itMediaFile').addEventListener('change', (e)=>{
     e.target.value = '';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    pendingVideoData = reader.result;
-    document.getElementById('videoPreview').src = pendingVideoData;
-    document.getElementById('videoPreviewWrap').classList.remove('hide');
-  };
-  reader.readAsDataURL(file);
+  pendingVideoFile = file;
+  const localUrl = URL.createObjectURL(file);
+  document.getElementById('videoPreview').src = localUrl;
+  document.getElementById('videoPreviewWrap').classList.remove('hide');
 });
 
 document.getElementById('itemForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const editId = document.getElementById('itEditId').value;
   const existing = editId ? items.find(x=>x.id===editId) : null;
-  const mediaData = pendingVideoData || (existing ? existing.media : null);
-  if(!mediaData){
+
+  if(!pendingVideoFile && !(existing && existing.media)){
     showToast(dict.media_required[lang]);
     return;
   }
+
+  const submitBtn = document.getElementById('itSubmitBtn');
+  const progressWrap = document.getElementById('uploadProgressWrap');
+  const barFill = document.getElementById('uploadBarFill');
+  const barLabel = document.getElementById('uploadBarLabel');
+
+  let mediaUrl = existing ? existing.media : null;
+
+  if(pendingVideoFile){
+    submitBtn.disabled = true;
+    progressWrap.classList.remove('hide');
+    barFill.style.width = '0%';
+    barLabel.textContent = dict.uploading_video[lang].replace('{pct}', '0');
+    try{
+      mediaUrl = await uploadVideoToCloudinary(pendingVideoFile, (pct)=>{
+        barFill.style.width = pct + '%';
+        barLabel.textContent = dict.uploading_video[lang].replace('{pct}', pct);
+      });
+    }catch(err){
+      console.error(err);
+      showToast(dict.upload_failed[lang]);
+      submitBtn.disabled = false;
+      progressWrap.classList.add('hide');
+      return;
+    }
+  }
+
   const data = {
     id: editId || 'it_'+Date.now(),
     titleEn: document.getElementById('itTitleEn').value,
@@ -850,7 +916,7 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
     descEn: document.getElementById('itDescEn').value,
     descAr: document.getElementById('itDescAr').value,
     thumb: document.getElementById('itThumb').value,
-    media: mediaData
+    media: mediaUrl
   };
   if(editId){
     const idx = items.findIndex(x=>x.id===editId);
@@ -893,7 +959,7 @@ function loadItemForEdit(id){
   document.getElementById('itDescAr').value = it.descAr;
   document.getElementById('itThumb').value = it.thumb;
   document.getElementById('itMediaFile').value = '';
-  pendingVideoData = null;
+  pendingVideoFile = null;
   document.getElementById('videoPreview').src = it.media;
   document.getElementById('videoPreviewWrap').classList.remove('hide');
   document.getElementById('itMediaNote').textContent = dict.current_video_set[lang];
