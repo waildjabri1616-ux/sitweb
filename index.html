@@ -509,10 +509,6 @@
             </div>
           </div>
           <div class="form-group">
-            <label data-i18n="f_thumb">Thumbnail Image URL</label>
-            <input type="text" id="itThumb" placeholder="https://..." required>
-          </div>
-          <div class="form-group">
             <label data-i18n="f_media">Choose Video From Your Files</label>
             <input type="file" id="itMediaFile" accept="video/*">
           </div>
@@ -579,6 +575,23 @@
           </div>
           <button type="submit" class="form-submit" data-i18n="f_save_settings">Save Settings</button>
         </form>
+        <div style="margin-top:34px;padding-top:26px;border-top:1px solid var(--card-line)">
+          <h3 style="font-family:var(--disp);text-transform:uppercase;font-weight:400;font-size:18px;margin-bottom:16px" data-i18n="admin_pass_title">Change Admin Password</h3>
+          <form id="passwordForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label data-i18n="f_current_pass">Current Password</label>
+                <input type="password" id="setCurrentPass" maxlength="20" required>
+              </div>
+              <div class="form-group">
+                <label data-i18n="f_new_pass">New Password</label>
+                <input type="password" id="setNewPass" maxlength="20" required>
+              </div>
+            </div>
+            <div class="form-note" id="passwordErr" style="color:var(--red)"></div>
+            <button type="submit" class="form-submit" data-i18n="f_save_pass">Update Password</button>
+          </form>
+        </div>
       </div>
 
     </div>
@@ -612,7 +625,6 @@ const dict = {
   tab_add:{en:"Add Video",ar:"إضافة فيديو"}, tab_manage:{en:"Manage",ar:"إدارة"}, tab_photo:{en:"Profile Photo",ar:"الصورة الشخصية"}, tab_settings:{en:"Site Settings",ar:"إعدادات الموقع"},
   f_title_en:{en:"Title (English)",ar:"العنوان (إنجليزي)"}, f_title_ar:{en:"Title (Arabic)",ar:"العنوان (عربي)"},
   f_desc_en:{en:"Description (English)",ar:"الوصف (إنجليزي)"}, f_desc_ar:{en:"Description (Arabic)",ar:"الوصف (عربي)"},
-  f_thumb:{en:"Thumbnail Image URL",ar:"رابط الصورة المصغرة"},
   f_media:{en:"Choose Video From Your Files",ar:"اختر فيديو من ملفاتك"},
   f_media_note:{en:"Pick a video file from your device. Keep clips short — large files may be too big to save.",ar:"اختر ملف فيديو من جهازك. اجعل المقاطع قصيرة — الملفات الكبيرة قد لا تُحفظ."},
   media_too_big:{en:"This video is too large to save ({size}MB). Please use a shorter clip or compress it, under {max}MB.",ar:"هذا الفيديو كبير جداً ({size} م.ب). استخدم مقطعاً أقصر أو ضغطه ليكون أقل من {max} م.ب."},
@@ -629,6 +641,12 @@ const dict = {
   f_setting_email:{en:"Email",ar:"البريد الإلكتروني"}, f_setting_ig:{en:"Instagram (username or link)",ar:"إنستغرام (اسم أو رابط)"},
   f_setting_tt:{en:"TikTok (username or link)",ar:"تيك توك (اسم أو رابط)"}, f_setting_sc:{en:"Snapchat (username or link)",ar:"سناب شات (اسم أو رابط)"},
   f_save_settings:{en:"Save Settings",ar:"حفظ الإعدادات"},
+  admin_pass_title:{en:"Change Admin Password",ar:"تغيير كلمة سر الإدارة"},
+  f_current_pass:{en:"Current Password",ar:"كلمة السر الحالية"},
+  f_new_pass:{en:"New Password",ar:"كلمة السر الجديدة"},
+  f_save_pass:{en:"Update Password",ar:"تحديث كلمة السر"},
+  toast_pass_updated:{en:"Password updated!",ar:"تم تحديث كلمة السر!"},
+  wrong_current_pass:{en:"Current password is incorrect.",ar:"كلمة السر الحالية غير صحيحة."},
   lbl_phone:{en:"Call",ar:"اتصال"}, lbl_wa:{en:"WhatsApp",ar:"واتساب"}, lbl_email:{en:"Email",ar:"البريد الإلكتروني"},
   video_tag:{en:"Video",ar:"فيديو"},
   no_items:{en:"No videos uploaded yet. Check back soon.",ar:"لا توجد فيديوهات بعد. تحقق قريباً."},
@@ -675,7 +693,10 @@ function uploadVideoToCloudinary(file, onProgress){
     };
     xhr.onload = ()=>{
       if(xhr.status>=200 && xhr.status<300){
-        try{ const data = JSON.parse(xhr.responseText); resolve(data.secure_url); }
+        try{
+          const data = JSON.parse(xhr.responseText);
+          resolve({ url: data.secure_url, publicId: data.public_id });
+        }
         catch(err){ reject(err); }
       } else { reject(new Error('Upload failed: ' + xhr.status)); }
     };
@@ -687,8 +708,52 @@ function uploadVideoToCloudinary(file, onProgress){
   });
 }
 
+// Capture a frame from a video file to use as an auto-generated thumbnail
+function captureVideoThumbnail(file){
+  return new Promise((resolve, reject)=>{
+    const url = URL.createObjectURL(file);
+    const videoEl = document.createElement('video');
+    videoEl.src = url;
+    videoEl.muted = true;
+    videoEl.playsInline = true;
+    videoEl.addEventListener('loadeddata', ()=>{
+      videoEl.currentTime = Math.min(0.5, (videoEl.duration||1)/4);
+    });
+    videoEl.addEventListener('seeked', ()=>{
+      try{
+        const canvas = document.createElement('canvas');
+        canvas.width = videoEl.videoWidth || 640;
+        canvas.height = videoEl.videoHeight || 360;
+        canvas.getContext('2d').drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+        const thumbDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        URL.revokeObjectURL(url);
+        resolve(thumbDataUrl);
+      }catch(err){ URL.revokeObjectURL(url); reject(err); }
+    });
+    videoEl.addEventListener('error', (e)=>{ URL.revokeObjectURL(url); reject(e); });
+    videoEl.load();
+  });
+}
+
+// Delete an uploaded video from Cloudinary via our secure serverless endpoint
+async function deleteVideoFromCloudinary(publicId){
+  if(!publicId) return { ok:false };
+  try{
+    const res = await fetch('/api/delete-cloudinary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ public_id: publicId })
+    });
+    if(!res.ok) return { ok:false };
+    return await res.json();
+  }catch(err){
+    console.error('Cloudinary delete failed:', err);
+    return { ok:false };
+  }
+}
+
 let items = [];
-let settings = { photo:'', phone:'+213 000 000 000', whatsapp:'+213 000 000 000', email:'wail.djabri@example.com', instagram:'@djabri', tiktok:'@djabri', snapchat:'djabri' };
+let settings = { photo:'', phone:'+213 000 000 000', whatsapp:'+213 000 000 000', email:'wail.djabri@example.com', instagram:'@djabri', tiktok:'@djabri', snapchat:'djabri', adminPassword:'1234' };
 
 // init
 async function init(){
@@ -820,7 +885,7 @@ document.getElementById('adminUnlockBtn').addEventListener('click', tryUnlock);
 document.getElementById('adminPass').addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryUnlock(); });
 function tryUnlock(){
   const val = document.getElementById('adminPass').value;
-  if(val === '1234'){
+  if(val === (settings.adminPassword || '1234')){
     isAdmin = true;
     closeOverlay('adminLockOverlay');
     openAdminDashboard();
@@ -889,6 +954,7 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
   const barLabel = document.getElementById('uploadBarLabel');
 
   let mediaUrl = existing ? existing.media : null;
+  let mediaPublicId = existing ? existing.publicId : null;
 
   if(pendingVideoFile){
     submitBtn.disabled = true;
@@ -896,10 +962,12 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
     barFill.style.width = '0%';
     barLabel.textContent = dict.uploading_video[lang].replace('{pct}', '0');
     try{
-      mediaUrl = await uploadVideoToCloudinary(pendingVideoFile, (pct)=>{
+      const uploadResult = await uploadVideoToCloudinary(pendingVideoFile, (pct)=>{
         barFill.style.width = pct + '%';
         barLabel.textContent = dict.uploading_video[lang].replace('{pct}', pct);
       });
+      mediaUrl = uploadResult.url;
+      mediaPublicId = uploadResult.publicId;
     }catch(err){
       console.error(err);
       showToast(dict.upload_failed[lang]);
@@ -909,14 +977,22 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
     }
   }
 
+  // Thumbnail: keep existing if editing, otherwise auto-generate a frame from the newly uploaded video
+  let thumbValue = existing ? existing.thumb : '';
+  if(pendingVideoFile){
+    try{ thumbValue = await captureVideoThumbnail(pendingVideoFile); }
+    catch(err){ console.error('Thumbnail capture failed:', err); }
+  }
+
   const data = {
     id: editId || 'it_'+Date.now(),
     titleEn: document.getElementById('itTitleEn').value,
     titleAr: document.getElementById('itTitleAr').value,
     descEn: document.getElementById('itDescEn').value,
     descAr: document.getElementById('itDescAr').value,
-    thumb: document.getElementById('itThumb').value,
-    media: mediaUrl
+    thumb: thumbValue,
+    media: mediaUrl,
+    publicId: mediaPublicId
   };
   if(editId){
     const idx = items.findIndex(x=>x.id===editId);
@@ -957,7 +1033,6 @@ function loadItemForEdit(id){
   document.getElementById('itTitleAr').value = it.titleAr;
   document.getElementById('itDescEn').value = it.descEn;
   document.getElementById('itDescAr').value = it.descAr;
-  document.getElementById('itThumb').value = it.thumb;
   document.getElementById('itMediaFile').value = '';
   pendingVideoFile = null;
   document.getElementById('videoPreview').src = it.media;
@@ -972,6 +1047,11 @@ async function deleteItem(id){
   const title = it ? (lang==='ar' ? it.titleAr : it.titleEn) : '';
   const msg = dict.confirm_delete[lang].replace('{title}', title);
   if(!window.confirm(msg)) return;
+
+  if(it && it.publicId){
+    await deleteVideoFromCloudinary(it.publicId);
+  }
+
   items = items.filter(x=>x.id!==id);
   await setData('djabri-items', items);
   showToast(dict.toast_deleted[lang]);
@@ -1032,7 +1112,7 @@ function fillSettingsForm(){
 document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   settings = {
-    photo: settings.photo,
+    ...settings,
     phone: document.getElementById('setPhone').value,
     whatsapp: document.getElementById('setWhatsapp').value,
     email: document.getElementById('setEmail').value,
@@ -1044,6 +1124,22 @@ document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
   applyAboutPhoto();
   showToast(dict.toast_settings[lang]);
   renderContact();
+});
+
+document.getElementById('passwordForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const errEl = document.getElementById('passwordErr');
+  errEl.textContent = '';
+  const current = document.getElementById('setCurrentPass').value;
+  const next = document.getElementById('setNewPass').value;
+  if(current !== (settings.adminPassword || '1234')){
+    errEl.textContent = dict.wrong_current_pass[lang];
+    return;
+  }
+  settings = { ...settings, adminPassword: next };
+  await setData('djabri-settings', settings);
+  document.getElementById('passwordForm').reset();
+  showToast(dict.toast_pass_updated[lang]);
 });
 
 // mobile nav toggle
