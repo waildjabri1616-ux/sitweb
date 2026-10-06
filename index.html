@@ -347,8 +347,14 @@
   .video-preview video{ width:100%; max-height:260px; display:block; }
   .lock-screen{ padding:60px 30px; text-align:center; }
   .lock-screen .icon{ margin-bottom:18px; display:flex; justify-content:center; color:var(--volt); }
-  .lock-screen input{ text-align:center; letter-spacing:8px; font-size:22px; max-width:220px; margin:0 auto 16px; }
-  .mini-note{ font-size:11px; color:var(--muted); margin-top:14px; }
+  .lock-screen input{
+    display:block; width:100%; max-width:280px; margin:0 auto 12px; text-align:center; font-size:15px;
+    background:#0a0f1c; border:1px solid var(--card-line); border-radius:4px; padding:12px 14px;
+    color:var(--fg); font-family:var(--body); outline:none; transition:border-color .2s, box-shadow .2s;
+  }
+  .lock-screen input:focus{ border-color:var(--volt); box-shadow:0 0 0 3px rgba(47,109,255,.15); }
+  .lock-screen .btn{ margin-top:6px; }
+  .mini-note{ font-size:11px; color:var(--red); margin-top:14px; min-height:14px; }
 
   .hide{ display:none !important; }
 
@@ -365,9 +371,10 @@
     section{ padding:90px 6vw; }
   }
 </style>
-  <!-- Firebase: added only for persistent data storage -->
+  <!-- Firebase: database + authentication -->
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 </head>
 <body dir="ltr">
 
@@ -463,14 +470,15 @@
   </div>
 </div>
 
-<!-- ADMIN LOCK -->
+<!-- ADMIN LOGIN (Firebase Authentication) -->
 <div class="overlay" id="adminLockOverlay">
   <div class="modal">
     <button class="modal-close" data-close="adminLockOverlay"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <div class="lock-screen">
       <div class="icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
       <h2 style="font-family:var(--disp);text-transform:uppercase;margin-bottom:18px" data-i18n="admin_title">Admin Access</h2>
-      <input type="password" id="adminPass" placeholder="••••" maxlength="8">
+      <input type="email" id="adminEmail" placeholder="Email" autocomplete="username">
+      <input type="password" id="adminPass" placeholder="Password" autocomplete="current-password">
       <button class="btn btn-primary" id="adminUnlockBtn" data-i18n="admin_enter">Enter</button>
       <div class="mini-note" id="adminErr"></div>
     </div>
@@ -578,23 +586,6 @@
           </div>
           <button type="submit" class="form-submit" data-i18n="f_save_settings">Save Settings</button>
         </form>
-        <div style="margin-top:34px;padding-top:26px;border-top:1px solid var(--card-line)">
-          <h3 style="font-family:var(--disp);text-transform:uppercase;font-weight:400;font-size:18px;margin-bottom:16px" data-i18n="admin_pass_title">Change Admin Password</h3>
-          <form id="passwordForm">
-            <div class="form-row">
-              <div class="form-group">
-                <label data-i18n="f_current_pass">Current Password</label>
-                <input type="password" id="setCurrentPass" maxlength="20" required>
-              </div>
-              <div class="form-group">
-                <label data-i18n="f_new_pass">New Password</label>
-                <input type="password" id="setNewPass" maxlength="20" required>
-              </div>
-            </div>
-            <div class="form-note" id="passwordErr" style="color:var(--red)"></div>
-            <button type="submit" class="form-submit" data-i18n="f_save_pass">Update Password</button>
-          </form>
-        </div>
       </div>
 
     </div>
@@ -644,12 +635,6 @@ const dict = {
   f_setting_email:{en:"Email",ar:"البريد الإلكتروني"}, f_setting_ig:{en:"Instagram (username or link)",ar:"إنستغرام (اسم أو رابط)"},
   f_setting_tt:{en:"TikTok (username or link)",ar:"تيك توك (اسم أو رابط)"}, f_setting_sc:{en:"Snapchat (username or link)",ar:"سناب شات (اسم أو رابط)"},
   f_save_settings:{en:"Save Settings",ar:"حفظ الإعدادات"},
-  admin_pass_title:{en:"Change Admin Password",ar:"تغيير كلمة سر الإدارة"},
-  f_current_pass:{en:"Current Password",ar:"كلمة السر الحالية"},
-  f_new_pass:{en:"New Password",ar:"كلمة السر الجديدة"},
-  f_save_pass:{en:"Update Password",ar:"تحديث كلمة السر"},
-  toast_pass_updated:{en:"Password updated!",ar:"تم تحديث كلمة السر!"},
-  wrong_current_pass:{en:"Current password is incorrect.",ar:"كلمة السر الحالية غير صحيحة."},
   lbl_phone:{en:"Call",ar:"اتصال"}, lbl_wa:{en:"WhatsApp",ar:"واتساب"}, lbl_email:{en:"Email",ar:"البريد الإلكتروني"},
   video_tag:{en:"Video",ar:"فيديو"},
   no_items:{en:"No videos uploaded yet. Check back soon.",ar:"لا توجد فيديوهات بعد. تحقق قريباً."},
@@ -657,7 +642,8 @@ const dict = {
   toast_deleted:{en:"Video deleted.",ar:"تم حذف الفيديو."},
   confirm_delete:{en:'Delete "{title}"? This cannot be undone.',ar:'حذف "{title}"؟ لا يمكن التراجع عن هذا الإجراء.'},
   toast_settings:{en:"Settings updated!",ar:"تم تحديث الإعدادات!"},
-  wrong_pass:{en:"Wrong password. Try again.",ar:"كلمة سر خاطئة. حاول مجدداً."}
+  wrong_pass:{en:"Wrong email or password.",ar:"الإيميل أو كلمة السر غير صحيحة."},
+  save_denied:{en:"Save failed. Please sign in again.",ar:"فشل الحفظ. سجّل الدخول من جديد."}
 };
 let lang = 'en';
 function applyI18n(){
@@ -671,17 +657,7 @@ function applyI18n(){
 }
 document.getElementById('langBtn').addEventListener('click', ()=>{ lang = lang === 'en' ? 'ar' : 'en'; applyI18n(); });
 
-// storage
-const SHARED = true;
-async function getData(key, fallback){
-  try{ const r = await window.storage.get(key, SHARED); return r ? JSON.parse(r.value) : fallback; }
-  catch(e){ return fallback; }
-}
-async function setData(key, value){
-  try{ await window.storage.set(key, JSON.stringify(value), SHARED); }catch(e){ console.error(e); }
-}
-
-// Firebase Realtime Database added without changing the original site code
+// Firebase (Realtime Database + Authentication)
 const firebaseConfig = {
   apiKey: "AIzaSyBWZ4nJ19eob-agPN7UV-xXZo02ocxzLb0",
   authDomain: "djabri-portfolio.firebaseapp.com",
@@ -700,7 +676,6 @@ try {
   console.error("Firebase initialization failed:", e);
 }
 
-// Override only the two storage functions used by the original code.
 async function getData(key, fallback){
   try{
     const snapshot = await window.djabriFirebaseDB.ref(key).get();
@@ -711,16 +686,20 @@ async function getData(key, fallback){
   }
 }
 
+// returns true on success, false on failure (e.g. PERMISSION_DENIED)
 async function setData(key, value){
   try{
     await window.djabriFirebaseDB.ref(key).set(value);
+    return true;
   }catch(e){
     console.error("Firebase write failed:", e);
+    showToast(dict.save_denied[lang]);
+    return false;
   }
 }
 
 // ==========================================
-// Cloudinary config — replace with your own
+// Cloudinary config
 // ==========================================
 const CLOUDINARY_CLOUD_NAME = "zn9tdpxy";
 const CLOUDINARY_UPLOAD_PRESET = "wail_uploads";
@@ -776,13 +755,14 @@ function captureVideoThumbnail(file){
   });
 }
 
-// Delete an uploaded video from Cloudinary via our secure serverless endpoint
+// Delete an uploaded video from Cloudinary via the serverless endpoint (requires a signed-in admin token)
 async function deleteVideoFromCloudinary(publicId){
   if(!publicId) return { ok:false };
   try{
+    const token = await firebase.auth().currentUser.getIdToken();
     const res = await fetch('/api/delete-cloudinary', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ public_id: publicId })
     });
     if(!res.ok) return { ok:false };
@@ -794,13 +774,13 @@ async function deleteVideoFromCloudinary(publicId){
 }
 
 let items = [];
-let settings = { photo:'', phone:'+213 000 000 000', whatsapp:'+213 000 000 000', email:'wail.djabri@example.com', instagram:'@djabri', tiktok:'@djabri', snapchat:'djabri', adminPassword:'1234' };
+let settings = { photo:'', phone:'+213 000 000 000', whatsapp:'+213 000 000 000', email:'wail.djabri@example.com', instagram:'@djabri', tiktok:'@djabri', snapchat:'djabri' };
 
 // init
 async function init(){
   items = await getData('djabri-items', []);
   const s = await getData('djabri-settings', null);
-  if(s) settings = s;
+  if(s){ delete s.adminPassword; settings = { ...settings, ...s }; }
   applyAboutPhoto();
   applyI18n();
   fillSettingsForm();
@@ -840,7 +820,10 @@ function renderGallery(){
 }
 
 function escapeHtml(str){ const d=document.createElement('div'); d.textContent = str||''; return d.innerHTML; }
-function escapeAttr(str){ return (str||'').replace(/"/g,'&quot;'); }
+function escapeAttr(str){ return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+// only allow http(s) links so injected data can never run javascript: URLs
+function safeUrl(u){ return /^https?:\/\//i.test(u||'') ? u : ''; }
 
 let activeItemId = null;
 function openLightbox(id){
@@ -848,7 +831,7 @@ function openLightbox(id){
   if(!it) return;
   activeItemId = id;
   const media = document.getElementById('lbMedia');
-  media.innerHTML = `<video src="${escapeAttr(it.media)}" controls autoplay style="width:100%;height:100%;background:#000;object-fit:contain"></video>`;
+  media.innerHTML = `<video src="${escapeAttr(safeUrl(it.media))}" controls autoplay style="width:100%;height:100%;background:#000;object-fit:contain"></video>`;
   document.getElementById('lbTag').textContent = dict.video_tag[lang];
   document.getElementById('lbTitle').textContent = lang==='ar' ? it.titleAr : it.titleEn;
   document.getElementById('lbDesc').textContent = lang==='ar' ? it.descAr : it.descEn;
@@ -860,7 +843,7 @@ function renderContact(){
   const list = document.getElementById('contactList');
   list.innerHTML = `
     <a href="tel:${escapeAttr(settings.phone)}"><span><span class="label">${dict.lbl_phone[lang]}</span><br>${escapeHtml(settings.phone)}</span><span>→</span></a>
-    <a href="https://wa.me/${escapeAttr((settings.whatsapp||'').replace(/[^0-9]/g,''))}" target="_blank"><span><span class="label">${dict.lbl_wa[lang]}</span><br>${escapeHtml(settings.whatsapp)}</span><span>→</span></a>
+    <a href="https://wa.me/${escapeAttr((settings.whatsapp||'').replace(/[^0-9]/g,''))}" target="_blank" rel="noopener"><span><span class="label">${dict.lbl_wa[lang]}</span><br>${escapeHtml(settings.whatsapp)}</span><span>→</span></a>
     <a href="mailto:${escapeAttr(settings.email)}"><span><span class="label">${dict.lbl_email[lang]}</span><br>${escapeHtml(settings.email)}</span><span>→</span></a>
   `;
   const soc = document.getElementById('socialsWrap');
@@ -872,10 +855,10 @@ function renderContact(){
   ];
   chips.forEach(c=>{
     if(!c.v) return;
-    const link = c.v.startsWith('http') ? c.v : '#';
+    const link = safeUrl(c.v) || '#';
     const a = document.createElement('a');
     a.className='social-chip'; a.textContent = c.label + ' · ' + c.v.replace(/^https?:\/\//,'');
-    a.href = link; if(link!=='#') a.target='_blank';
+    a.href = link; if(link!=='#'){ a.target='_blank'; a.rel='noopener'; }
     soc.appendChild(a);
   });
 }
@@ -916,21 +899,29 @@ function refreshReveal(){
   document.querySelectorAll('.reveal-stag:not(.in)').forEach(el=>revealObserver.observe(el));
 }
 
-// admin
+// admin login — Firebase Authentication (no password stored in code or database)
 let isAdmin = false;
+firebase.auth().onAuthStateChanged(user => { isAdmin = !!user; });
+
 document.getElementById('adminGear').addEventListener('click', ()=>{
   if(isAdmin){ openAdminDashboard(); }
-  else { document.getElementById('adminPass').value=''; document.getElementById('adminErr').textContent=''; openOverlay('adminLockOverlay'); }
+  else {
+    document.getElementById('adminPass').value='';
+    document.getElementById('adminErr').textContent='';
+    openOverlay('adminLockOverlay');
+  }
 });
 document.getElementById('adminUnlockBtn').addEventListener('click', tryUnlock);
 document.getElementById('adminPass').addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryUnlock(); });
-function tryUnlock(){
-  const val = document.getElementById('adminPass').value;
-  if(val === (settings.adminPassword || '1234')){
-    isAdmin = true;
+async function tryUnlock(){
+  const email = document.getElementById('adminEmail').value.trim();
+  const pass = document.getElementById('adminPass').value;
+  try{
+    await firebase.auth().signInWithEmailAndPassword(email, pass);
+    document.getElementById('adminPass').value='';
     closeOverlay('adminLockOverlay');
     openAdminDashboard();
-  } else {
+  }catch(e){
     document.getElementById('adminErr').textContent = dict.wrong_pass[lang];
   }
 }
@@ -961,7 +952,7 @@ document.querySelectorAll('.admin-tab').forEach(tab=>{
 
 // add / edit video
 let pendingVideoFile = null;
-const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB — Cloudinary free plan limit for unsigned uploads
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB
 document.getElementById('itMediaFile').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
@@ -1035,13 +1026,16 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
     media: mediaUrl,
     publicId: mediaPublicId
   };
+  const next = items.slice();
   if(editId){
-    const idx = items.findIndex(x=>x.id===editId);
-    if(idx>-1) items[idx] = data;
+    const idx = next.findIndex(x=>x.id===editId);
+    if(idx>-1) next[idx] = data;
   } else {
-    items.push(data);
+    next.push(data);
   }
-  await setData('djabri-items', items);
+  const ok = await setData('djabri-items', next);
+  if(!ok){ submitBtn.disabled = false; progressWrap.classList.add('hide'); return; }
+  items = next;
   resetItemForm();
   showToast(dict.toast_saved[lang]);
   renderGallery(); renderManageList();
@@ -1089,12 +1083,15 @@ async function deleteItem(id){
   const msg = dict.confirm_delete[lang].replace('{title}', title);
   if(!window.confirm(msg)) return;
 
+  const next = items.filter(x=>x.id!==id);
+  const ok = await setData('djabri-items', next);
+  if(!ok) return;
+
   if(it && it.publicId){
     await deleteVideoFromCloudinary(it.publicId);
   }
 
-  items = items.filter(x=>x.id!==id);
-  await setData('djabri-items', items);
+  items = next;
   showToast(dict.toast_deleted[lang]);
   renderGallery(); renderManageList();
 }
@@ -1135,8 +1132,11 @@ document.getElementById('setPhotoFile').addEventListener('change', async (e)=>{
 });
 document.getElementById('photoForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
-  if(pendingPhotoData){ settings.photo = pendingPhotoData; }
-  await setData('djabri-settings', settings);
+  const next = { ...settings };
+  if(pendingPhotoData){ next.photo = pendingPhotoData; }
+  const ok = await setData('djabri-settings', next);
+  if(!ok) return;
+  settings = next;
   applyAboutPhoto();
   showToast(dict.toast_photo[lang]);
 });
@@ -1152,7 +1152,7 @@ function fillSettingsForm(){
 }
 document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
-  settings = {
+  const next = {
     ...settings,
     phone: document.getElementById('setPhone').value,
     whatsapp: document.getElementById('setWhatsapp').value,
@@ -1161,26 +1161,12 @@ document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
     tiktok: document.getElementById('setTiktok').value,
     snapchat: document.getElementById('setSnapchat').value
   };
-  await setData('djabri-settings', settings);
+  const ok = await setData('djabri-settings', next);
+  if(!ok) return;
+  settings = next;
   applyAboutPhoto();
   showToast(dict.toast_settings[lang]);
   renderContact();
-});
-
-document.getElementById('passwordForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const errEl = document.getElementById('passwordErr');
-  errEl.textContent = '';
-  const current = document.getElementById('setCurrentPass').value;
-  const next = document.getElementById('setNewPass').value;
-  if(current !== (settings.adminPassword || '1234')){
-    errEl.textContent = dict.wrong_current_pass[lang];
-    return;
-  }
-  settings = { ...settings, adminPassword: next };
-  await setData('djabri-settings', settings);
-  document.getElementById('passwordForm').reset();
-  showToast(dict.toast_pass_updated[lang]);
 });
 
 // mobile nav toggle
